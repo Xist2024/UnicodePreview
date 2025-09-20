@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode 字符渲染器</title>
+    <style>
+        /* 引入字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        /* --- 核心样式 (源于您提供的 style.css) --- */
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+            background-color: #007bff;
+            background-image: linear-gradient(to bottom right, #007bff, #20c997);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 主卡片样式 */
+        .card-base {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            box-sizing: border-box;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-base:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* --- 针对本应用的定制样式 --- */
+        h1 {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #f0f0f0;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            margin: 0 0 10px 0;
+        }
+
+        p {
+            font-size: 1.1em;
+            color: #e0e0e0;
+            margin: 0 0 30px 0;
+        }
+
+        .input-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        #unicode-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 15px 15px 15px 60px;
+            font-size: 1.8em;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        #unicode-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        #unicode-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .input-prefix {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.8em;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+        }
+        
+        #char-display {
+            width: 100%;
+            height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem;
+            border-radius: 12px;
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s ease-out;
+            overflow: hidden; /* 防止特大字符溢出 */
+            text-overflow: clip;
+        }
+
+        #char-display.valid {
+            border-color: #28a745;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1), 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+        #char-display.invalid {
+            border-color: #dc3545;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1), 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+
+        #info-display {
+            margin-top: 15px;
+            height: 30px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #e0e0e0;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            margin-bottom: 25px;
+        }
+        
+        /* 按钮组容器 */
+        .button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 两列布局 */
+            gap: 15px;
+            width: 100%;
+        }
+
+        /* 通用操作按钮样式 */
+        .action-btn {
+            padding: 12px 10px;
+            font-size: 1.05em; /* 调整字体保证能放下文字 */
+            font-weight: bold;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* 随机按钮，跨越两列 */
+        .wide-btn {
+            grid-column: 1 / -1; /* 让此按钮占据整行 */
+            padding: 15px 20px;
+            font-size: 1.2em;
+        }
+
+        /* --- 通知框样式 --- */
+        #toast-notification {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(46, 204, 113, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            font-size: 1.1em;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 9999;
+            transition: top 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap;
+        }
+        #toast-notification.show {
+            top: 20px;
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card-base">
+        <h1>Unicode 字符渲染器</h1>
+        <p>输入码点，或随机探索</p>
+
+        <div class="input-container">
+            <span class="input-prefix">U+</span>
+            <input type="text" id="unicode-input" placeholder="1F604" autocomplete="off" autofocus>
+        </div>
+
+        <div id="char-display">😊</div>
+        <div id="info-display">U+1F604 (128516)</div>
+        
+        <div class="button-grid">
+            <button id="copy-btn" class="action-btn">一键复制图中字符</button>
+            <button id="search-btn" class="action-btn">必应搜索此字符</button>
+            <button id="random-btn" class="action-btn wide-btn">随机显示生僻字</button>
+        </div>
+    </div>
+
+    <!-- 复制成功后的提示框 -->
+    <div id="toast-notification"></div>
+
+    <script>
+        const inputElement = document.getElementById('unicode-input');
+        const charDisplay = document.getElementById('char-display');
+        const infoDisplay = document.getElementById('info-display');
+        const randomBtn = document.getElementById('random-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const searchBtn = document.getElementById('search-btn');
+        const toast = document.getElementById('toast-notification');
+        let toastTimeout;
+
+        const rareCharRanges = [
+            { start: 0x3400, end: 0x4DBF }, 
+            { start: 0x20000, end: 0x2A6DF }, 
+            { start: 0x2A700, end: 0x2B73F },
+            { start: 0x2B740, end: 0x2B81F },
+            { start: 0x2B820, end: 0x2CEAF },
+            { start: 0x2CEB0, end: 0x2EBEF },
+        ];
+
+        function showToast(message) {
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toast.textContent = message;
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function updateCharacter(rawInput) {
+            const hexCode = rawInput.trim().replace(/^(u\+?)/i, '');
+            let character = ''; 
+            let infoText = '无效的码点';
+
+            charDisplay.classList.remove('valid', 'invalid');
+
+            if (hexCode) {
+                const codePoint = parseInt(hexCode, 16);
+                if (!isNaN(codePoint) && codePoint >= 0 && codePoint <= 0x10FFFF) {
+                    try {
+                        character = String.fromCodePoint(codePoint);
+                        const formattedHex = codePoint.toString(16).toUpperCase().padStart(4, '0');
+                        infoText = `U+${formattedHex} (${codePoint})`;
+                        charDisplay.classList.add('valid');
+                    } catch (e) {
+                        charDisplay.classList.add('invalid');
+                    }
+                } else {
+                     charDisplay.classList.add('invalid');
+                }
+            } else {
+                character = '';
+                infoText = '等待输入...';
+            }
+
+            charDisplay.textContent = character;
+            infoDisplay.textContent = infoText;
+        }
+        
+        function generateRandomRareChar() {
+            const randomRangeIndex = Math.floor(Math.random() * rareCharRanges.length);
+            const selectedRange = rareCharRanges[randomRangeIndex];
+            const start = selectedRange.start;
+            const end = selectedRange.end;
+            const codePoint = Math.floor(Math.random() * (end - start + 1)) + start;
+            const hexCode = codePoint.toString(16).toUpperCase();
+            
+            inputElement.value = hexCode;
+            updateCharacter(hexCode);
+        }
+        
+        // --- Event Listeners ---
+        inputElement.addEventListener('input', () => updateCharacter(inputElement.value));
+        randomBtn.addEventListener('click', generateRandomRareChar);
+        
+        copyBtn.addEventListener('click', () => {
+            const charToCopy = charDisplay.textContent;
+            if (charToCopy && charDisplay.classList.contains('valid')) {
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = charToCopy;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('字符已复制到剪贴板！');
+                } catch (err) {
+                    showToast('复制失败！');
+                    console.error('无法复制字符: ', err);
+                }
+                document.body.removeChild(tempTextArea);
+            } else {
+                showToast('没有有效的字符可复制');
+            }
+        });
+
+        searchBtn.addEventListener('click', () => {
+            const charToSearch = charDisplay.textContent;
+            if (charToSearch && charDisplay.classList.contains('valid')) {
+                const encodedChar = encodeURIComponent(charToSearch);
+                const searchUrl = `https://www.bing.com/search?q=${encodedChar}`;
+                window.open(searchUrl, '_blank');
+            } else {
+                showToast('没有有效的字符可搜索');
+            }
+        });
+        
+        // Initial load
+        updateCharacter(inputElement.placeholder);
+    </script>
+
+</body>
+</html>
+
