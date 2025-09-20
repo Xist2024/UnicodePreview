@@ -161,13 +161,6 @@
             transform: scale(0.98);
         }
         
-        /* 随机按钮，跨越两列 */
-        .wide-btn {
-            grid-column: 1 / -1; /* 让此按钮占据整行 */
-            padding: 15px 20px;
-            font-size: 1.2em;
-        }
-
         /* --- 通知框样式 --- */
         #toast-notification {
             position: fixed;
@@ -214,7 +207,8 @@
         <div class="button-grid">
             <button id="copy-btn" class="action-btn">一键复制图中字符</button>
             <button id="search-btn" class="action-btn">必应搜索此字符</button>
-            <button id="random-btn" class="action-btn wide-btn">随机显示生僻字</button>
+            <button id="random-rare-btn" class="action-btn">随机生僻字</button>
+            <button id="random-common-btn" class="action-btn">随机通用字符</button>
         </div>
     </div>
 
@@ -225,12 +219,14 @@
         const inputElement = document.getElementById('unicode-input');
         const charDisplay = document.getElementById('char-display');
         const infoDisplay = document.getElementById('info-display');
-        const randomBtn = document.getElementById('random-btn');
+        const randomRareBtn = document.getElementById('random-rare-btn');
+        const randomCommonBtn = document.getElementById('random-common-btn'); // 新的按钮ID
         const copyBtn = document.getElementById('copy-btn');
         const searchBtn = document.getElementById('search-btn');
         const toast = document.getElementById('toast-notification');
         let toastTimeout;
 
+        // 生僻汉字区段
         const rareCharRanges = [
             { start: 0x3400, end: 0x4DBF }, 
             { start: 0x20000, end: 0x2A6DF }, 
@@ -238,6 +234,26 @@
             { start: 0x2B740, end: 0x2B81F },
             { start: 0x2B820, end: 0x2CEAF },
             { start: 0x2CEB0, end: 0x2EBEF },
+        ];
+        
+        // Noto Sans SC 字体良好支持的通用字符范围
+        const commonSupportedRanges = [
+            { name: "常用标点及符号", start: 0x0020, end: 0x007F },
+            { name: "西欧及拉丁文补充", start: 0x00A0, end: 0x00FF },
+            { name: "通用标点", start: 0x2000, end: 0x206F },
+            { name: "货币符号", start: 0x20A0, end: 0x20CF },
+            { name: "字母式符号", start: 0x2100, end: 0x214F },
+            { name: "数字形式", start: 0x2150, end: 0x218F },
+            { name: "箭头", start: 0x2190, end: 0x21FF },
+            { name: "数学运算符", start: 0x2200, end: 0x22FF },
+            { name: "制表符和方块", start: 0x2500, end: 0x259F },
+            { name: "几何图形", start: 0x25A0, end: 0x25FF },
+            { name: "杂项符号", start: 0x2600, end: 0x26FF },
+            { name: "中日韩符号和标点", start: 0x3000, end: 0x303F },
+            { name: "日文假名", start: 0x3040, end: 0x30FF },
+            { name: "中日韩统一表意文字扩展A区", start: 0x3400, end: 0x4DBF },
+            { name: "中日韩统一表意文字基本区", start: 0x4E00, end: 0x9FFF },
+            { name: "全角ASCII、半角变体", start: 0xFF00, end: 0xFFEF }
         ];
 
         function showToast(message) {
@@ -279,9 +295,9 @@
             infoDisplay.textContent = infoText;
         }
         
-        function generateRandomRareChar() {
-            const randomRangeIndex = Math.floor(Math.random() * rareCharRanges.length);
-            const selectedRange = rareCharRanges[randomRangeIndex];
+        function generateRandomCharFromRanges(ranges) {
+            const randomRangeIndex = Math.floor(Math.random() * ranges.length);
+            const selectedRange = ranges[randomRangeIndex];
             const start = selectedRange.start;
             const end = selectedRange.end;
             const codePoint = Math.floor(Math.random() * (end - start + 1)) + start;
@@ -293,7 +309,14 @@
         
         // --- Event Listeners ---
         inputElement.addEventListener('input', () => updateCharacter(inputElement.value));
-        randomBtn.addEventListener('click', generateRandomRareChar);
+        
+        randomRareBtn.addEventListener('click', () => {
+            generateRandomCharFromRanges(rareCharRanges);
+        });
+        
+        randomCommonBtn.addEventListener('click', () => {
+            generateRandomCharFromRanges(commonSupportedRanges);
+        });
         
         copyBtn.addEventListener('click', () => {
             const charToCopy = charDisplay.textContent;
