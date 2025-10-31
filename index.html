@@ -206,13 +206,14 @@
         
         <div class="button-grid">
             <button id="copy-btn" class="action-btn">一键复制图中字符</button>
-            <button id="search-btn" class="action-btn">必应搜索此字符</button>
+            
+            <button id="search-btn" class="action-btn">查看此汉字释义</button>
+            
             <button id="random-rare-btn" class="action-btn">随机生僻字</button>
             <button id="random-common-btn" class="action-btn">随机通用字符</button>
         </div>
     </div>
 
-    <!-- 复制成功后的提示框 -->
     <div id="toast-notification"></div>
 
     <script>
@@ -338,14 +339,17 @@
             }
         });
 
+        // *** 这是修改过的点击事件 ***
         searchBtn.addEventListener('click', () => {
             const charToSearch = charDisplay.textContent;
             if (charToSearch && charDisplay.classList.contains('valid')) {
                 const encodedChar = encodeURIComponent(charToSearch);
-                const searchUrl = `https://www.bing.com/search?q=${encodedChar}`;
+                // URL已修改为 zdic.net
+                const searchUrl = `https://www.zdic.net/hans/${encodedChar}`;
                 window.open(searchUrl, '_blank');
             } else {
-                showToast('没有有效的字符可搜索');
+                // 提示信息已修改
+                showToast('没有有效的字符可查询');
             }
         });
         
@@ -355,4 +359,3 @@
 
 </body>
 </html>
-
